@@ -1,0 +1,55 @@
+Daniel Ferreira
+daniel.ferreira@gmail.com | +44 7911 234567 | London, UK
+
+PROFESSIONAL SUMMARY
+Software Engineer with 4 years of backend development experience, currently transitioning into machine learning. Strong Python and SQL foundations, with hands-on ML project experience. Seeking a role that bridges software engineering and applied AI.
+
+WORK EXPERIENCE
+
+Backend Software Engineer — Fintech Startup (Paynova), London
+March 2021 – Present (3 years)
+- Designed and built RESTful APIs using FastAPI and Python serving 200k daily requests
+- Managed PostgreSQL and Redis databases; wrote complex SQL queries for financial analytics
+- Implemented automated testing with pytest, achieving 89% code coverage
+- Deployed services using Docker and AWS ECS; used GitHub Actions for CI/CD pipelines
+- Collaborated in Agile sprints using Jira and Confluence
+
+Junior Software Developer — WebSolutions Ltd, Porto, Portugal
+2020 – 2021 (1 year)
+- Developed web applications with Django and JavaScript
+- Contributed to a React frontend consuming REST APIs
+- Used Git/GitHub for version control and code reviews
+
+EDUCATION
+
+Bachelor of Science in Computer Science
+Universidade do Porto, Portugal — 2020
+
+Online Courses & Self-Study:
+- Machine Learning Specialisation — Andrew Ng / Coursera (2023)
+- Deep Learning with PyTorch — Fast.ai (2023)
+- Natural Language Processing with Transformers — Hugging Face (2024)
+
+MACHINE LEARNING PROJECTS (Personal / Freelance)
+
+Sentiment Analysis Pipeline (2024)
+- Built an end-to-end NLP pipeline using Hugging Face Transformers (BERT)
+- Trained on 100k Amazon reviews; achieved 91% accuracy
+- Deployed as a FastAPI microservice on AWS Lambda
+
+House Price Predictor (2023)
+- Regression model using Scikit-Learn (XGBoost, Random Forest)
+- Feature engineering, cross-validation, Matplotlib visualisations
+- Presented findings via Jupyter Notebook
+
+SKILLS
+Python (Advanced), JavaScript, SQL, Bash
+FastAPI, Django, Flask, Node.js, React
+PostgreSQL, MySQL, Redis, MongoDB
+Docker, AWS (ECS, Lambda, S3), GitHub Actions, CI/CD
+Scikit-Learn, PyTorch (learning), Pandas, NumPy, Matplotlib
+Hugging Face Transformers (beginner), XGBoost
+Git, Agile, REST APIs, pytest
+
+LANGUAGES
+English (Fluent), Portuguese (Native), Spanish (Conversational)

@@ -1,0 +1,57 @@
+Marcus Johnson
+marcus.johnson95@yahoo.com | +1 (312) 555-0184 | Chicago, IL
+
+OBJECTIVE
+Recent Computer Science graduate seeking a software development or data role. Eager to learn and grow in a technology-driven environment.
+
+EDUCATION
+
+Bachelor of Science in Computer Science
+DePaul University, Chicago — May 2024
+GPA: 3.1/4.0
+Relevant Coursework: Data Structures, Algorithms, Database Systems, Web Development, Statistics
+
+EXPERIENCE
+
+IT Support Intern — Chicago Public Schools
+June 2023 – August 2023 (2 months)
+- Provided technical support and hardware troubleshooting for 30+ staff members
+- Assisted in setting up school computer labs with Windows 10
+
+Freelance Web Developer (Self-employed)
+2022 – 2023
+- Built 3 small business websites using HTML, CSS, JavaScript, and WordPress
+- Managed client communication and project timelines
+
+Barista — Starbucks
+2021 – 2022
+- Customer service, team coordination, cash handling
+
+PROJECTS (University)
+
+Student Grade Tracker (Python, SQLite) — 2023
+- Command-line app to manage student grades using Python and SQLite
+- Basic CRUD operations, file I/O
+
+Weather App (JavaScript, React) — 2023
+- Fetched weather data from a public REST API
+- Displayed forecast with simple charts using Chart.js
+
+Personal Portfolio Website — 2022
+- Built using HTML, CSS, Bootstrap, and deployed on GitHub Pages
+
+SKILLS
+Python (beginner-intermediate), JavaScript, HTML, CSS
+React (basic), Node.js (basic)
+SQL, SQLite, MySQL (basic)
+Git, GitHub, WordPress
+Microsoft Office, Excel
+Problem Solving, Communication, Teamwork
+
+EXTRACURRICULAR
+- Member, DePaul Coding Club (2022–2024)
+- Volunteered at local food bank (2021–2023)
+
+CERTIFICATIONS
+- Google IT Support Professional Certificate (Coursera) — 2023
+- freeCodeCamp Responsive Web Design — 2022

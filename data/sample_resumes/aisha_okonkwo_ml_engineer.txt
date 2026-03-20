@@ -1,0 +1,56 @@
+Aisha Okonkwo
+aisha.okonkwo@email.com | +1 (415) 882-3390 | linkedin.com/in/aishaokonkwo | github.com/aishaokonkwo
+
+SUMMARY
+Senior Machine Learning Engineer with 7 years of experience building production AI/ML systems at scale. Deep expertise in NLP, deep learning, and MLOps. Passionate about translating research into real-world impact.
+
+EXPERIENCE
+
+Senior ML Engineer — NeuralOps Inc, San Francisco, CA
+2020 – Present (4 years)
+- Led end-to-end development of a real-time NLP recommendation engine serving 50M+ users, improving CTR by 34%
+- Architected scalable ML pipelines using Apache Airflow, Kubernetes, and MLflow on AWS
+- Fine-tuned large language models (LLaMA, GPT) using LoRA for domain-specific tasks
+- Implemented vector search with FAISS and Pinecone for semantic retrieval at scale
+- Mentored a team of 5 junior ML engineers; introduced weekly paper reading sessions
+
+ML Engineer — DataBridge Analytics, Austin, TX
+2018 – 2020 (2 years)
+- Built fraud detection models using XGBoost and LightGBM achieving 98.5% precision
+- Developed NLP pipelines for sentiment analysis using Hugging Face Transformers
+- Containerised ML services with Docker and deployed on GCP using Cloud Run
+- Reduced model retraining costs by 40% through intelligent feature caching in Redis
+
+Junior Data Scientist — StatIQ, Remote
+2017 – 2018 (1 year)
+- Analysed 10M+ user records with Pandas, NumPy, and Scikit-Learn
+- Built dashboards in Tableau and Power BI for executive stakeholder reports
+
+EDUCATION
+
+Master of Science in Computer Science (AI Specialisation)
+University of California, Berkeley — 2017
+GPA: 3.91/4.0
+
+Bachelor of Science in Mathematics & Statistics
+University of Lagos — 2015
+
+SKILLS
+Python, PyTorch, TensorFlow, Keras, Scikit-Learn, Hugging Face Transformers, LangChain
+NLP, Computer Vision, Deep Learning, Reinforcement Learning, Generative AI, LLMs
+MLOps, MLflow, Kubeflow, Apache Airflow, Spark
+AWS, GCP, Azure, Docker, Kubernetes, Helm, Terraform, GitHub Actions, CI/CD
+SQL, PostgreSQL, MongoDB, Redis, FAISS, Pinecone, Elasticsearch
+Pandas, NumPy, Matplotlib, Seaborn, Plotly
+FastAPI, Flask, Django, REST APIs, GraphQL
+Git, GitHub, Agile, Scrum
+
+PUBLICATIONS & PROJECTS
+- "Efficient LLM Fine-Tuning for Low-Resource Languages" — NeurIPS 2023 Workshop
+- Open-source: llm-eval-toolkit (2.3k GitHub stars)
+- Kaggle Master: Top 1% in NLP competitions
+
+CERTIFICATIONS
+- AWS Certified Machine Learning – Specialty
+- Google Professional ML Engineer
+- Deep Learning Specialisation (Coursera / Andrew Ng)

@@ -1,0 +1,69 @@
+Yuki Tanaka
+yuki.tanaka@protonmail.com | +49 151 2347 8901 | Berlin, Germany
+linkedin.com/in/yukitanaka-mlops | github.com/yukitanaka
+
+PROFILE
+MLOps / Platform Engineer with 6 years of experience designing cloud-native ML infrastructure. Expert in Kubernetes, Terraform, and the full MLOps lifecycle. Passionate about making data science teams move faster through robust, reproducible infrastructure.
+
+EXPERIENCE
+
+Senior MLOps Engineer — Zalando SE, Berlin
+2021 – Present (3 years)
+- Architected and maintained Kubernetes-based ML platform serving 20+ data science teams
+- Built automated model training and deployment pipelines using Kubeflow and MLflow
+- Implemented infrastructure-as-code with Terraform across AWS and Azure
+- Designed CI/CD pipelines with GitHub Actions and ArgoCD for model lifecycle management
+- Reduced model deployment time from 2 weeks to 4 hours through standardised templates
+- Managed FAISS-based vector search infrastructure for recommendation systems
+- Collaborated with ML engineers on Python-based model services (FastAPI, Docker)
+
+DevOps Engineer — SAP SE, Walldorf
+2019 – 2021 (2 years)
+- Managed Kubernetes clusters (EKS) handling 500k+ daily requests
+- Implemented Helm charts for microservices deployment standardisation
+- Built monitoring and alerting with Prometheus, Grafana, and PagerDuty
+- Automated infrastructure provisioning using Terraform and Ansible
+
+Junior DevOps Engineer — N26 GmbH, Berlin
+2018 – 2019 (1 year)
+- Maintained CI/CD pipelines in Jenkins
+- Assisted with Docker containerisation of legacy services
+
+EDUCATION
+
+Bachelor of Engineering in Information Technology
+Technical University of Berlin — 2018
+
+SKILLS
+
+Cloud & Infrastructure:
+AWS (EKS, EC2, S3, Lambda, SageMaker), Azure, GCP, Terraform, Ansible, Helm
+
+Containers & Orchestration:
+Docker, Kubernetes, Kubeflow, Argo Workflows, ArgoCD
+
+MLOps & ML:
+MLflow, Kubeflow Pipelines, Apache Airflow, DVC (Data Version Control)
+Python (proficient), Scikit-Learn, XGBoost, PyTorch (working knowledge)
+FAISS, Pinecone, Weaviate (vector databases)
+
+CI/CD & Monitoring:
+GitHub Actions, GitLab CI, Jenkins, Prometheus, Grafana, Datadog
+
+Databases:
+PostgreSQL, MySQL, Redis, Elasticsearch, MongoDB
+
+Languages:
+Python, Bash, Go (basic), YAML
+
+CERTIFICATIONS
+- Certified Kubernetes Administrator (CKA) — 2022
+- AWS Certified DevOps Engineer – Professional — 2021
+- HashiCorp Certified: Terraform Associate — 2020
+
+OPEN SOURCE
+- Contributor to Kubeflow (merged 3 PRs related to pipeline scheduling)
+- Author of k8s-ml-templates: reusable Helm charts for ML workloads (800+ GitHub stars)
+
+LANGUAGES
+English (Fluent), German (Fluent), Japanese (Native)

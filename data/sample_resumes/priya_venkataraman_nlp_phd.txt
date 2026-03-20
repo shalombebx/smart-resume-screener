@@ -1,0 +1,67 @@
+Priya Venkataraman
+priya.venkataraman@research.edu | +1 (617) 449-7823 | Boston, MA
+github.com/priyavnk | scholar.google.com/priyavenkataraman
+
+ACADEMIC & PROFESSIONAL PROFILE
+PhD-level researcher in Computational Linguistics and NLP with 6 years of combined academic and industry experience. Published 8 peer-reviewed papers. Expert in transformer architectures, text generation, and multilingual NLP. Transitioning to industry to apply research at scale.
+
+EDUCATION
+
+PhD in Computational Linguistics
+Massachusetts Institute of Technology (MIT) — 2024
+Dissertation: "Cross-lingual Transfer Learning in Low-Resource Morphologically Rich Languages"
+Advisor: Prof. Joanna Chen
+GPA: 4.0/4.0
+
+Master of Science in Artificial Intelligence
+Carnegie Mellon University — 2019
+
+Bachelor of Engineering in Computer Science
+IIT Bombay, India — 2017
+Gold Medallist
+
+RESEARCH EXPERIENCE
+
+Graduate Research Assistant — MIT NLP Group
+2019 – 2024 (5 years)
+- Developed novel transformer-based architectures for multilingual NLP tasks
+- Pre-trained large language models (LLMs) on 200GB multilingual corpora using PyTorch on AWS HPC clusters
+- Published 6 papers in ACL, EMNLP, NAACL, and NeurIPS
+- Maintained open-source codebase (HuggingFace hub, 5k+ downloads)
+
+Research Intern — Google Brain, Mountain View
+Summer 2022 (3 months)
+- Worked on efficient fine-tuning of T5 and PaLM models
+- Evaluated instruction-following capabilities for multi-task learning
+
+Research Intern — Microsoft Research, Redmond
+Summer 2021 (3 months)
+- Contributed to Azure Cognitive Services NLP pipeline improvements
+- Ran experiments with GPT-based models for question-answering
+
+INDUSTRY EXPERIENCE
+
+Data Science Consultant (Part-time, Freelance)
+2022 – Present
+- Built NLP classification systems for legal document analysis (Python, spaCy, Scikit-Learn)
+- Delivered Tableau dashboards for market research clients
+
+TECHNICAL SKILLS
+Python (Expert), R, MATLAB, Bash
+PyTorch, TensorFlow, Hugging Face Transformers, spaCy, NLTK
+Scikit-Learn, NumPy, Pandas, SciPy
+AWS (EC2, S3, SageMaker), GCP (Vertex AI)
+Docker, Git, Linux, Jupyter, MLflow
+SQL, PostgreSQL, MongoDB
+Matplotlib, Seaborn, Plotly, Tableau
+LLMs, NLP, Deep Learning, Machine Learning, Computer Vision (basic)
+
+SELECTED PUBLICATIONS
+1. "Efficient Cross-lingual Adaptation of LLMs" — ACL 2023
+2. "Zero-shot Transfer for Morphologically Complex Languages" — EMNLP 2022
+3. "Data Augmentation Strategies for Low-Resource NLP" — NAACL 2022
+
+AWARDS & HONOURS
+- NSF Graduate Research Fellowship (2019)
+- MIT Presidential Fellowship (2019)
+- Best Paper Award — EMNLP 2022

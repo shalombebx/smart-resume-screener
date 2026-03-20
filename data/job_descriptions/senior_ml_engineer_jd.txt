@@ -1,0 +1,52 @@
+Senior Machine Learning Engineer — AI Platform Team
+
+Company: InnovateTech (Series C, 350 employees)
+Location: San Francisco, CA (Hybrid) | Remote Considered
+Salary: $180,000 – $240,000 + equity + benefits
+
+ABOUT THE ROLE
+We are seeking a Senior Machine Learning Engineer to join our AI Platform team. You will design, build, and scale production ML systems that power our core products. This is a high-impact, highly technical role where you'll work closely with research, product, and data engineering teams.
+
+WHAT YOU'LL DO
+- Design and deploy production-grade ML models and pipelines at scale
+- Build and maintain robust MLOps infrastructure (training, evaluation, deployment, monitoring)
+- Collaborate with data scientists to operationalise ML research into production
+- Architect vector search and semantic retrieval systems
+- Lead code reviews, set technical standards, and mentor junior engineers
+- Stay current with the latest developments in LLMs, generative AI, and NLP
+
+REQUIRED QUALIFICATIONS
+- 5+ years of professional software/ML engineering experience
+- Deep proficiency in Python; strong software engineering fundamentals
+- Production experience with PyTorch or TensorFlow
+- Experience with NLP, LLMs, or large-scale deep learning
+- Hands-on experience with MLOps tools: MLflow, Kubeflow, or similar
+- Cloud platform experience: AWS, GCP, or Azure
+- Proficiency with Docker and Kubernetes
+- Experience with CI/CD pipelines (GitHub Actions, GitLab CI, or Jenkins)
+- Strong understanding of distributed systems and scalable architecture
+- Bachelor's or Master's degree in Computer Science, Engineering, or related field (PhD a plus)
+
+PREFERRED QUALIFICATIONS
+- Experience with LangChain, Hugging Face Transformers, or OpenAI APIs
+- Familiarity with vector databases: FAISS, Pinecone, Weaviate, or Chroma
+- Experience with Apache Airflow or similar workflow orchestration
+- Publications in ML/AI venues (NeurIPS, ICML, ACL, EMNLP, etc.)
+- Open-source contributions in the ML ecosystem
+- Experience with Terraform or infrastructure-as-code tools
+
+OUR TECH STACK
+Python, PyTorch, Hugging Face, LangChain, FastAPI
+Kubernetes (EKS), Docker, Helm, Terraform
+AWS (SageMaker, EC2, S3, Lambda), GitHub Actions
+MLflow, Airflow, FAISS, PostgreSQL, Redis
+
+WHAT WE OFFER
+- Competitive salary and meaningful equity
+- Remote-friendly culture with quarterly team offsites
+- $5,000 annual learning & development budget
+- Full health, dental, vision insurance
+- Unlimited PTO
+- Top-of-the-line MacBook Pro + home office stipend
+
+InnovateTech is an equal opportunity employer. We celebrate diversity and are committed to building an inclusive environment.
