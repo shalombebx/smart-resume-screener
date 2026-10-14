@@ -176,7 +176,7 @@ smart-resume-screener/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/smart-resume-screener.git
+git clone https://github.com/shalombebx/smart-resume-screener.git
 cd smart-resume-screener
 ```
 
