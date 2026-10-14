@@ -141,13 +141,13 @@ smart-resume-screener/
 │   └── index.html                  # Premium single-page UI (vanilla JS)
 │
 ├── data/
-│   ├── sample_resumes/             # 5 ready-to-use sample résumés
+│   ├── sample_resumes/              
 │   │   ├── aisha_okonkwo_ml_engineer.txt
 │   │   ├── daniel_ferreira_backend_ml.txt
 │   │   ├── priya_venkataraman_nlp_phd.txt
 │   │   ├── marcus_johnson_entry_level.txt
 │   │   └── yuki_tanaka_mlops_engineer.txt
-│   │
+│   │                               #Note: All sample résumés in the /data directory are 100% synthetically generated and                                               contain no real personally identifiable information (PII).
 │   └── job_descriptions/
 │       └── senior_ml_engineer_jd.txt
 │
