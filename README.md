@@ -12,7 +12,7 @@
 
 ## 🔥 Project Overview
 
-Smart Résumé Screener is a **production-grade Applicant Tracking System (ATS)** that uses OpenAI's `text-embedding-3-large` and GPT-4.1 to intelligently rank candidates against a job description with transparent, explainable scoring.
+Smart Résumé Screener is a **portfolio-grade Applicant Tracking System (ATS)** that uses OpenAI's `text-embedding-3-large` and GPT-4.1 to intelligently rank candidates against a job description with transparent, explainable scoring.
 
 ### Why this project stands out
 
