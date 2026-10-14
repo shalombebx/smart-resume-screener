@@ -407,6 +407,15 @@ Real résumés are inconsistent — "ML", "machine learning", "Machine Learning"
 **Why disk caching for embeddings?**
 The same résumé being re-analysed against a different JD doesn't need a new embedding. SHA-256 keyed JSON caching reduces API costs by ~80% for repeated runs.
 
+## Bias and Responsible Use
+
+Automated hiring tools require strict scrutiny regarding fairness and algorithmic bias. Machine learning models can inadvertently learn and amplify biases present in historical training data, potentially disadvantaging candidates based on demographic, geographic, or socioeconomic factors. 
+
+**Guidelines for Responsible AI Use:**
+* **Human in the Loop:** This system is designed as an assistive tool to help surface qualified candidates efficiently. It is not intended to replace human judgment, and final hiring decisions should always be made by a human reviewer.
+* **Active Bias Detection:** We are currently planning and developing a dedicated bias detection module to actively monitor, flag, and mitigate unfair filtering patterns within the screening pipeline.
+* **Continuous Auditing:** Users implementing this tool are highly encouraged to conduct regular audits of their screening outcomes to ensure the system promotes an inclusive, equitable, and merit-based hiring process.
+
 ---
 
 ## 📄 License
