@@ -1,6 +1,6 @@
 # 🎯 Smart Résumé Screener
 
-> **AI-powered résumé ranking with OpenAI embeddings, GPT-4.1 reasoning, and a hybrid multi-signal scoring engine. Portfolio-grade. Production-ready.**
+> **AI-powered résumé ranking with OpenAI embeddings, GPT-4.1 reasoning, and a hybrid multi-signal scoring engine. Portfolio-grade.**
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
