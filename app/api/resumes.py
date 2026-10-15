@@ -17,7 +17,9 @@ from typing import List
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from starlette.concurrency import run_in_threadpool
 
-from app.core.config import settings
+from app.core.config import get_settings
+
+settings = get_settings()
 from app.core.logger import get_logger
 from app.models.schemas import UploadResponse
 from app.services.extractor import extractor
