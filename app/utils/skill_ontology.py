@@ -6,6 +6,8 @@ Canonical skill groups → normalises aliases so
 """
 from __future__ import annotations
 
+import re
+
 # Each entry: canonical_name → set of known aliases (all lower-case)
 SKILL_GROUPS: dict[str, set[str]] = {
     # ── Programming Languages ─────────────────────────────────────────────────
@@ -40,6 +42,10 @@ SKILL_GROUPS: dict[str, set[str]] = {
     "XGBoost": {"xgboost", "xgb", "gradient boosting"},
     "LightGBM": {"lightgbm", "lgbm"},
     "Hugging Face": {"hugging face", "huggingface", "transformers library"},
+    "MLflow": {"mlflow"},
+    "LangChain": {"langchain", "lang chain"},
+    "Generative AI": {"generative ai", "genai", "gen ai"},
+    "Vector Databases": {"vector database", "vector databases", "faiss", "pinecone", "weaviate", "chroma", "milvus"},
 
     # ── Data Engineering ──────────────────────────────────────────────────────
     "Pandas": {"pandas", "dataframes"},
@@ -95,8 +101,12 @@ def normalize_skill(raw: str) -> str:
     return _ALIAS_TO_CANONICAL.get(raw.strip().lower(), raw.strip().title())
 
 
+# Name used by the test-suite and by callers; identical behaviour.
+canonicalise = normalize_skill
+
+
 def normalize_skill_list(skills: list[str]) -> list[str]:
-    """Normalize + deduplicate a list of raw skill strings."""
+    """Normalize + deduplicate a list of raw skill strings (order preserved)."""
     seen: set[str] = set()
     result: list[str] = []
     for s in skills:
@@ -105,3 +115,61 @@ def normalize_skill_list(skills: list[str]) -> list[str]:
             seen.add(canonical)
             result.append(canonical)
     return result
+
+
+# ── Free-text skill extraction ────────────────────────────────────────────────
+# Aliases that are ordinary English words / names / abbreviations and would
+# create false positives when scanning free text ("Go to market", "Ann", "CV").
+# They still work in normalize_skill() / canonicalise(); they are only skipped
+# when *scanning text*.  Use "golang" to get Go detected.
+_TEXT_SCAN_EXCLUDED = {
+    "go", "cache", "express", "shell", "containers", "probability", "cv", "ann",
+}
+
+
+def _build_scanner() -> re.Pattern:
+    aliases = [a for a in _ALIAS_TO_CANONICAL if len(a) >= 2 and a not in _TEXT_SCAN_EXCLUDED]
+    aliases.sort(key=len, reverse=True)            # longest alternative first
+    body = "|".join(re.escape(a) for a in aliases)
+    # Not preceded/followed by an identifier character, so "ml" does not match
+    # inside "html" and "c++" / "c#" / "node.js" are handled correctly.
+    return re.compile(rf"(?<![A-Za-z0-9+#.])(?:{body})(?![A-Za-z0-9+#])", re.IGNORECASE)
+
+
+_SCANNER = _build_scanner()
+
+
+def extract_skills_from_text(text: str) -> list[str]:
+    """Return canonical skills found in ``text`` (deduplicated, first-seen order)."""
+    if not text:
+        return []
+    found: list[str] = []
+    seen: set[str] = set()
+    for m in _SCANNER.finditer(text):
+        canonical = _ALIAS_TO_CANONICAL[m.group(0).lower()]
+        if canonical not in seen:
+            seen.add(canonical)
+            found.append(canonical)
+    return found
+
+
+# ── Matching helpers ──────────────────────────────────────────────────────────
+
+def keyword_match_score(resume_skills: list[str], jd_skills: list[str]) -> float:
+    """Percentage (0–100) of JD skills present in the résumé. Empty JD → 0.0."""
+    jd = normalize_skill_list(jd_skills)
+    if not jd:
+        return 0.0
+    have = set(normalize_skill_list(resume_skills))
+    hits = sum(1 for s in jd if s in have)
+    return round(hits / len(jd) * 100.0, 2)
+
+
+def skills_overlap(resume_skills: list[str], jd_skills: list[str]) -> tuple[list[str], list[str]]:
+    """Return (matching, missing) JD skills, in JD order, canonicalised."""
+    have = set(normalize_skill_list(resume_skills))
+    matching: list[str] = []
+    missing: list[str] = []
+    for s in normalize_skill_list(jd_skills):
+        (matching if s in have else missing).append(s)
+    return matching, missing

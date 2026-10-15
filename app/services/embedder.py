@@ -5,8 +5,7 @@ Generates and caches OpenAI text embeddings.
 
 Features:
 - Uses text-embedding-3-large (configurable)
-- Disk-based SHA-256 keyed cache (JSON) to avoid redundant API calls
-- Batch support for multiple texts
+- Disk-based SHA-256 keyed cache (JSON) with TTL (CACHE_TTL_SECONDS)
 - Cosine similarity utility
 """
 
@@ -14,7 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -25,12 +24,14 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
+_MAX_CHARS = 32000   # ≈ 8k tokens, safely under the model's 8191-token input limit
+
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
     """Compute cosine similarity between two equal-length vectors."""
     if len(a) != len(b):
         raise ValueError("Vector length mismatch")
-    dot    = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(y * y for y in b))
     if norm_a == 0 or norm_b == 0:
@@ -39,9 +40,7 @@ def _cosine_similarity(a: List[float], b: List[float]) -> float:
 
 
 class EmbeddingService:
-    """
-    Thin wrapper around the OpenAI Embeddings API with transparent disk caching.
-    """
+    """Thin wrapper around the OpenAI Embeddings API with transparent disk caching."""
 
     def __init__(self) -> None:
         self._client: Optional[OpenAI] = None
@@ -55,8 +54,7 @@ class EmbeddingService:
         if self._client is None:
             if not settings.OPENAI_API_KEY:
                 raise RuntimeError(
-                    "OPENAI_API_KEY is not set. "
-                    "Add it to your .env file before running analysis."
+                    "OPENAI_API_KEY is not set. Add it to your .env file before running analysis."
                 )
             self._client = OpenAI(api_key=settings.OPENAI_API_KEY)
         return self._client
@@ -64,8 +62,7 @@ class EmbeddingService:
     # ── Cache helpers ──────────────────────────────────────────────────────────
 
     def _cache_key(self, text: str, model: str) -> str:
-        payload = f"{model}::{text}"
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        return hashlib.sha256(f"{model}::{text}".encode("utf-8")).hexdigest()
 
     def _cache_path(self, key: str) -> Path:
         return self._cache_dir / f"{key}.json"
@@ -74,6 +71,8 @@ class EmbeddingService:
         p = self._cache_path(key)
         if settings.ENABLE_EMBEDDING_CACHE and p.exists():
             try:
+                if settings.CACHE_TTL_SECONDS > 0 and time.time() - p.stat().st_mtime > settings.CACHE_TTL_SECONDS:
+                    return None                       # expired → re-fetch and overwrite
                 with p.open("r") as f:
                     return json.load(f)
             except Exception:
@@ -84,6 +83,7 @@ class EmbeddingService:
         if not settings.ENABLE_EMBEDDING_CACHE:
             return
         try:
+            self._cache_dir.mkdir(parents=True, exist_ok=True)
             with self._cache_path(key).open("w") as f:
                 json.dump(vector, f)
         except Exception as exc:
@@ -92,12 +92,10 @@ class EmbeddingService:
     # ── Core embedding ─────────────────────────────────────────────────────────
 
     def embed(self, text: str) -> List[float]:
-        """
-        Return the embedding vector for a single text.
-        Reads from cache if available; otherwise calls OpenAI and caches.
-        """
+        """Return the embedding vector for one text (cache first, then OpenAI)."""
         model = settings.OPENAI_EMBEDDING_MODEL
-        key   = self._cache_key(text, model)
+        truncated = text[:_MAX_CHARS]
+        key = self._cache_key(truncated, model)
 
         cached = self._load_from_cache(key)
         if cached is not None:
@@ -105,13 +103,7 @@ class EmbeddingService:
             return cached
 
         logger.debug("Embedding cache MISS — calling OpenAI API")
-        # Truncate to 8191 tokens approximate (chars / 4) to avoid API error
-        truncated = text[:32000]
-
-        response  = self.client.embeddings.create(
-            input=truncated,
-            model=model,
-        )
+        response = self.client.embeddings.create(input=truncated, model=model)
         vector = response.data[0].embedding
 
         self._save_to_cache(key, vector)
@@ -123,16 +115,22 @@ class EmbeddingService:
 
     # ── Similarity ─────────────────────────────────────────────────────────────
 
-    def similarity(self, text_a: str, text_b: str) -> float:
-        """
-        Return cosine similarity ∈ [-1, 1] between two texts.
-        Normalised to [0, 100] for display.
-        """
-        vec_a = self.embed(text_a)
-        vec_b = self.embed(text_b)
-        raw   = _cosine_similarity(vec_a, vec_b)
-        # Clamp to [0, 1] then scale to %
+    @staticmethod
+    def _to_percent(raw: float) -> float:
+        """Cosine ∈ [-1, 1] → clamp to [0, 1] → percent (0–100)."""
         return round(max(0.0, raw) * 100, 2)
+
+    def similarity(self, text_a: str, text_b: str) -> float:
+        """Cosine similarity of two texts as a 0–100 score."""
+        if not text_a.strip() or not text_b.strip():
+            return 0.0                                  # the API rejects empty input
+        return self._to_percent(_cosine_similarity(self.embed(text_a), self.embed(text_b)))
+
+    def similarity_to_vector(self, vector: List[float], text: str) -> float:
+        """Like ``similarity`` but reuses an already-computed vector (e.g. the JD's)."""
+        if not text.strip():
+            return 0.0
+        return self._to_percent(_cosine_similarity(vector, self.embed(text)))
 
 
 # ── Singleton ──────────────────────────────────────────────────────────────────

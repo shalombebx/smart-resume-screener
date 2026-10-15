@@ -25,7 +25,7 @@ from app.utils.skill_ontology import (
 from app.services.parser import ResumeParser
 from app.services.scorer import HybridScorer
 from app.models.schemas import (
-    ParsedResume, ScoreBreakdown, EducationLevel
+    AIExplanation, FitLevel, ParsedResume, ScoreBreakdown, EducationLevel
 )
 
 
@@ -285,13 +285,9 @@ class TestPipelineIntegration:
 
     def setup_method(self):
         from app.services.analyzer import ResumeAnalyzer
-        from app.services.embedder import EmbeddingService
-        from unittest.mock import patch, MagicMock
 
-        self.analyzer = ResumeAnalyzer()
-        self.parser   = ResumeParser()
-        self._patch   = patch
-        self._MagicMock = MagicMock
+        self.analyzer = ResumeAnalyzer()      # fresh store per test (not the global singleton)
+        self.parser = ResumeParser()
 
     def _add_resume(self, text: str, filename: str):
         r = self.parser.parse(text, filename)
@@ -317,9 +313,8 @@ class TestPipelineIntegration:
 
     def test_analyze_with_mock_openai(self):
         """Full pipeline run with mocked OpenAI calls."""
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
 
-        self.analyzer.clear_resumes()
         self._add_resume(
             "Alice Brown\nalice@email.com\nSenior Python developer, 6 years, PyTorch, Docker, AWS, Kubernetes",
             "alice.pdf"
@@ -329,31 +324,23 @@ class TestPipelineIntegration:
             "bob.pdf"
         )
 
-        # Mock OpenAI embeddings — return fake vectors
-        import math
+        # Deterministic fake embeddings: Alice's résumé ≈ the JD, Bob's is far away.
         def fake_embed(text):
-            # Deterministic fake: Alice gets high similarity, Bob gets low
             if "Senior" in text or "PyTorch" in text:
-                return [0.9, 0.1, 0.0] * 341 + [0.9]   # 1024-dim fake
+                return [0.9, 0.1, 0.0] * 341 + [0.9]
             return [0.1, 0.9, 0.0] * 341 + [0.1]
 
-        mock_explanation = MagicMock()
-        mock_explanation.summary = "Mocked explanation"
-        mock_explanation.strengths = ["Good Python skills"]
-        mock_explanation.weaknesses = []
-        mock_explanation.missing_requirements = []
-        mock_explanation.recommendation = "Hire"
-        mock_explanation.fit_level.value = "Strong Fit"
+        # NB: must be a real AIExplanation — CandidateResult validates its fields,
+        # so the old MagicMock was rejected by Pydantic.
+        explanation = AIExplanation(
+            summary="Mock summary",
+            strengths=["Python"],
+            recommendation="Consider for interview",
+            fit_level=FitLevel.MODERATE,
+        )
 
         with patch("app.services.embedder.embedding_service.embed", side_effect=fake_embed):
-            with patch("app.services.reasoner.ai_reasoner.explain", return_value=MagicMock(
-                summary="Mock summary",
-                strengths=["Python"],
-                weaknesses=[],
-                missing_requirements=[],
-                recommendation="Consider for interview",
-                fit_level=MagicMock(value="Moderate Fit"),
-            )):
+            with patch("app.services.reasoner.ai_reasoner.explain", return_value=explanation):
                 session = self.analyzer.analyze("We need Python, PyTorch, Docker, Kubernetes, AWS expert with 5+ years")
 
         assert session.total_resumes == 2
@@ -363,8 +350,59 @@ class TestPipelineIntegration:
         assert session.candidates[1].rank == 2
         # Rank 1 should have higher or equal final score
         assert session.candidates[0].score.final_score >= session.candidates[1].score.final_score
+        assert session.candidates[0].full_name == "Alice Brown"
         # Session ID is set
         assert len(session.session_id) > 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4b. Regression tests for bugs fixed during the debugging pass
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestRegressions:
+
+    def setup_method(self):
+        self.scorer = HybridScorer()
+        self.parser = ResumeParser()
+
+    def test_education_not_matched_by_substrings(self):
+        # "ond" is inside "second"; "master" is inside "Scrum Master" / "mastered"
+        r = self.parser.parse("Jo Doe\nSecond-year hobbyist. Mastered Python as a Scrum Master.", "x.pdf")
+        assert r.highest_education == EducationLevel.NONE
+
+    def test_education_msc_and_hnd(self):
+        assert self.parser.parse("A B\nM.Sc. Data Science", "x").highest_education == EducationLevel.MASTERS
+        assert self.parser.parse("A B\nHND Computer Science", "x").highest_education == EducationLevel.DIPLOMA
+
+    def test_education_dates_not_counted_as_experience(self):
+        r = self.parser.parse("Jo Doe\nB.Sc. Computer Science, University of Lagos\n2014 - 2018", "x")
+        assert r.total_experience_years == 0.0
+
+    def test_overlapping_ranges_counted_once(self):
+        r = self.parser.parse("Jo Doe\nEngineer, Acme\n2018 - 2022\nConsultant, Beta\n2020 - 2022", "x")
+        assert r.total_experience_years == 4.0
+
+    def test_phone_ignores_year_ranges(self):
+        r = self.parser.parse("Jo Doe\n2018-2022\n+234 801 234 5678", "x")
+        assert r.phone is not None and "234" in r.phone
+
+    def test_jd_junior_mention_does_not_lower_requirement(self):
+        jd = "Senior ML Engineer\n5+ years of experience required. Mentor junior engineers."
+        assert self.scorer._parse_required_experience(jd) == 5.0
+
+    def test_bachelors_or_masters_requires_bachelors(self):
+        from app.models.schemas import EducationLevel as E
+        assert self.scorer._parse_required_education("Bachelor's or Master's degree in CS") == E.BACHELORS
+        assert self.scorer._parse_required_education("M.S. in statistics") == E.MASTERS
+
+    def test_bonus_skills_use_canonical_names(self):
+        from app.services.scorer import _BONUS_SKILLS
+        from app.utils.skill_ontology import SKILL_GROUPS
+        assert [s for s in _BONUS_SKILLS if s not in SKILL_GROUPS] == []
+
+    def test_ambiguous_words_not_extracted(self):
+        skills = extract_skills_from_text("Ann sent her CV; we like to go to market. Built html pages.")
+        assert skills == []
 
 
 # ─────────────────────────────────────────────────────────────────────────────

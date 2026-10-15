@@ -714,7 +714,7 @@
           <ul class="step-list" id="stepList">
             <li id="step1">⟳ Computing OpenAI embeddings…</li>
             <li id="step2">○ Running hybrid scoring…</li>
-            <li id="step3">○ Generating GPT-4 explanations…</li>
+            <li id="step3">○ Generating GPT explanations…</li>
             <li id="step4">○ Ranking candidates…</li>
           </ul>
         </div>
@@ -761,7 +761,8 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────────
-let apiBase    = localStorage.getItem('apiBase') || 'http://localhost:8000';
+let apiBase    = localStorage.getItem('apiBase') ||
+  (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8000');
 let pendingFiles = [];          // Files waiting to be uploaded
 let uploadedResumes = [];       // Résumés confirmed by the server
 let currentSession = null;      // Latest analysis session
@@ -774,12 +775,17 @@ function showPage(name) {
   document.getElementById('nav' + name.charAt(0).toUpperCase() + name.slice(1))?.classList.add('active');
 }
 
+// ── Escaping (names, skills, filenames and AI text come from untrusted résumés) ──
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 // ── Toast ──────────────────────────────────────────────────────────────────────
 function toast(msg, type = 'info') {
   const icons = { success: '✓', error: '✗', info: 'ℹ' };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span>${icons[type]}</span> ${msg}`;
+  el.innerHTML = `<span>${icons[type]}</span> ${esc(msg)}`;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => el.remove(), 4000);
 }
@@ -823,6 +829,7 @@ function handleFiles(files) {
       pendingFiles.push(f);
     }
   }
+  document.getElementById('fileInput').value = '';
   renderPendingFiles();
 }
 
@@ -833,7 +840,7 @@ function renderPendingFiles() {
     <div class="file-item" id="file-${i}">
       <span class="file-icon">${f.name.endsWith('.pdf') ? '📕' : '📘'}</span>
       <div class="file-meta">
-        <div class="file-name">${f.name}</div>
+        <div class="file-name">${esc(f.name)}</div>
         <div class="file-status">${(f.size/1024).toFixed(0)} KB · ready</div>
       </div>
       <button class="file-remove" onclick="removeFile(${i})" title="Remove">×</button>
@@ -872,7 +879,10 @@ async function uploadFiles() {
     const res = await fetch(`${apiBase}/api/resumes/upload`, {
       method: 'POST', body: form,
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !Array.isArray(data)) {
+      throw new Error((data && typeof data.detail === 'string' && data.detail) || ('HTTP ' + res.status));
+    }
 
     let ok = 0, fail = 0;
     data.forEach((r, i) => {
@@ -895,7 +905,7 @@ async function uploadFiles() {
     await loadServerResumes();
 
   } catch (err) {
-    toast('Upload failed — is the backend running? (' + apiBase + ')', 'error');
+    toast('Upload failed: ' + err.message + ' (backend: ' + apiBase + ')', 'error');
   } finally {
     btn.disabled = false;
     btnIcon.textContent = '⬆️';
@@ -925,15 +935,15 @@ function renderParsedList() {
     <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom: 1px solid var(--border);">
       <span style="font-size: 20px;">👤</span>
       <div style="flex:1">
-        <div style="font-size: 14px; font-weight: 500;">${r.full_name || r.filename}</div>
+        <div style="font-size: 14px; font-weight: 500;">${esc(r.full_name || r.filename)}</div>
         <div style="font-size: 12px; color: var(--muted); font-family: var(--font-mono)">
-          ${r.skills_count} skills · ${r.experience_years}yr exp · ${r.education}
+          ${esc(r.skills_count)} skills · ${esc(r.experience_years)}yr exp · ${esc(r.education)}
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:5px;">
-          ${r.top_skills.slice(0,5).map(s => `<span style="background:rgba(0,229,160,0.08);color:var(--accent);padding:2px 8px;border-radius:20px;font-size:11px;font-family:var(--font-mono)">${s}</span>`).join('')}
+          ${r.top_skills.slice(0,5).map(s => `<span style="background:rgba(0,229,160,0.08);color:var(--accent);padding:2px 8px;border-radius:20px;font-size:11px;font-family:var(--font-mono)">${esc(s)}</span>`).join('')}
         </div>
       </div>
-      <button onclick="deleteResume('${r.candidate_id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;" title="Remove">🗑</button>
+      <button onclick="deleteResume('${esc(r.candidate_id)}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;" title="Remove">🗑</button>
     </div>
   `).join('');
 }
@@ -1001,13 +1011,14 @@ async function runAnalysis() {
   document.getElementById('analyzeBtn').disabled = true;
 
   const steps = ['step1','step2','step3','step4'];
-  let si = 0;
+  const labels = ['Computing OpenAI embeddings…','Running hybrid scoring…','Generating GPT explanations…','Ranking candidates…'];
+  steps.forEach((id, i) => { document.getElementById(id).textContent = (i === 0 ? '⟳ ' : '○ ') + labels[i]; });
+  let si = 1;
 
   const stepInterval = setInterval(() => {
-    if (si > 0) document.getElementById(steps[si-1]).innerHTML = '✓ ' + document.getElementById(steps[si-1]).textContent.replace(/^[⟳✓○]\s*/, '');
+    document.getElementById(steps[si-1]).textContent = '✓ ' + labels[si-1];
     if (si < steps.length) {
-      const labels = ['Computing OpenAI embeddings…','Running hybrid scoring…','Generating GPT-4 explanations…','Ranking candidates…'];
-      document.getElementById(steps[si]).innerHTML = '⟳ ' + labels[si];
+      document.getElementById(steps[si]).textContent = '⟳ ' + labels[si];
       si++;
     } else {
       clearInterval(stepInterval);
@@ -1024,8 +1035,11 @@ async function runAnalysis() {
     clearInterval(stepInterval);
 
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Analysis failed');
+      const err = await res.json().catch(() => ({}));
+      const d = err.detail;
+      throw new Error(typeof d === 'string' ? d
+        : Array.isArray(d) ? d.map(x => x.msg).join('; ')
+        : 'Analysis failed (HTTP ' + res.status + ')');
     }
 
     currentSession = await res.json();
@@ -1089,25 +1103,25 @@ function renderCandidateCard(c) {
   const rankCls = c.rank <= 3 ? `rank-${c.rank}` : '';
 
   const matchingChips = c.matching_skills.slice(0, 8).map(s =>
-    `<span class="chip chip-match">${s}</span>`).join('') || '<span class="chip-none">None identified</span>';
+    `<span class="chip chip-match">${esc(s)}</span>`).join('') || '<span class="chip-none">None identified</span>';
 
   const missingChips = c.missing_skills.slice(0, 8).map(s =>
-    `<span class="chip chip-miss">${s}</span>`).join('') || '<span class="chip-none">✓ No major gaps</span>';
+    `<span class="chip chip-miss">${esc(s)}</span>`).join('') || '<span class="chip-none">✓ No major gaps</span>';
 
   const ai = c.ai_explanation;
-  const strengthsList = (ai?.strengths || []).slice(0,4).map(s => `<li>${s}</li>`).join('');
-  const weaknessesList = (ai?.weaknesses || []).slice(0,3).map(s => `<li>${s}</li>`).join('');
+  const strengthsList = (ai?.strengths || []).slice(0,4).map(s => `<li>${esc(s)}</li>`).join('');
+  const weaknessesList = (ai?.weaknesses || []).slice(0,3).map(s => `<li>${esc(s)}</li>`).join('');
 
   return `
 <div class="candidate-card" id="card-${c.candidate_id}">
-  <div class="candidate-header" onclick="toggleCard('${c.candidate_id}')">
+  <div class="candidate-header" onclick="toggleCard('${esc(c.candidate_id)}')">
     <div class="rank-badge ${rankCls}">#${c.rank}</div>
     <div class="candidate-info">
-      <div class="candidate-name">${c.full_name || 'Candidate'}</div>
-      <div class="candidate-file">${c.filename}</div>
-      ${c.email ? `<div class="candidate-email">${c.email}</div>` : ''}
+      <div class="candidate-name">${esc(c.full_name || 'Candidate')}</div>
+      <div class="candidate-file">${esc(c.filename)}</div>
+      ${c.email ? `<div class="candidate-email">${esc(c.email)}</div>` : ''}
     </div>
-    <span class="fit-badge ${fitCls}">${fit || 'Unknown'}</span>
+    <span class="fit-badge ${fitCls}">${esc(fit || 'Unknown')}</span>
     <div class="score-badge" style="color: ${scoreCls}">${c.score.final_score.toFixed(1)}%</div>
     <span class="expand-icon" id="expand-${c.candidate_id}">▼</span>
   </div>
@@ -1143,10 +1157,10 @@ function renderCandidateCard(c) {
     <div class="detail-section">
       <h4>🧠 AI Analysis</h4>
       <div class="ai-box">
-        <p class="ai-summary">${ai?.summary || 'No AI analysis available.'}</p>
+        <p class="ai-summary">${esc(ai?.summary || 'No AI analysis available.')}</p>
         ${strengthsList ? `<ul class="ai-list strengths">${strengthsList}</ul>` : ''}
         ${weaknessesList ? `<ul class="ai-list weaknesses" style="margin-top:8px">${weaknessesList}</ul>` : ''}
-        ${ai?.recommendation ? `<div class="ai-recommendation"><strong>Recommendation:</strong> ${ai.recommendation}</div>` : ''}
+        ${ai?.recommendation ? `<div class="ai-recommendation"><strong>Recommendation:</strong> ${esc(ai.recommendation)}</div>` : ''}
       </div>
     </div>
   </div>

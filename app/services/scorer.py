@@ -9,62 +9,61 @@ Combines five signals into a weighted final score (0–100):
   ────────────────────────────────────────────────────────────────────────
   Embedding Similarity  50%    Cosine similarity between JD & résumé embeddings
   Keyword Match         20%    % of JD skills found in résumé (via ontology)
-  Experience Alignment  15%    Heuristic match of years / seniority keywords
+  Experience Alignment  15%    Candidate years vs. years required by the JD
   Education Match       10%    Degree level vs JD requirement
   Bonus Skills          5%     In-demand extras not explicitly required
-
 """
 
 from __future__ import annotations
 import re
-from typing import List, Optional
+from typing import List
 
 from app.core.config import settings
-from app.models.schemas import (
-    ParsedResume, ScoreBreakdown, EducationLevel
-)
-from app.utils.skill_ontology import (
-    extract_skills_from_text, keyword_match_score
-)
+from app.models.schemas import EDUCATION_RANK, EducationLevel, ParsedResume, ScoreBreakdown
+from app.utils.skill_ontology import keyword_match_score
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
-# ── Education level numeric rank (higher = better) ────────────────────────────
-_EDU_RANK: dict[EducationLevel, int] = {
-    EducationLevel.NONE:       0,
-    EducationLevel.DIPLOMA:    1,
-    EducationLevel.ASSOCIATE:  2,
-    EducationLevel.BACHELORS:  3,
-    EducationLevel.MASTERS:    4,
-    EducationLevel.PHD:        5,
-}
-
-# ── Seniority/experience keywords in JD ───────────────────────────────────────
-_EXP_LEVELS: list[tuple[re.Pattern, float]] = [
-    (re.compile(r"\b(intern|entry.?level|junior|0[\–\-–—]?\s*1\s*year)", re.I), 1.0),
-    (re.compile(r"\b(1[\–\-–—]?\s*2\s*years?|1\+|2\+)",                  re.I), 2.0),
-    (re.compile(r"\b(2[\–\-–—]?\s*3\s*years?|3\+)",                       re.I), 3.0),
-    (re.compile(r"\b(3[\–\-–—]?\s*5\s*years?|mid.?level)",                re.I), 4.0),
-    (re.compile(r"\b(5[\–\-–—]?\s*7\s*years?|5\+|senior)",                re.I), 6.0),
-    (re.compile(r"\b(7[\–\-–—]?\s*10\s*years?|7\+|lead|principal)",       re.I), 8.0),
-    (re.compile(r"\b(10\+|10[\–\-–—]?\s*\d+|staff|director|architect)",   re.I), 10.0),
+# ── Explicit "years of experience" statements in a JD ─────────────────────────
+_YEARS_PATTERNS = [
+    re.compile(r"(?:at\s+least|minimum(?:\s+of)?|min\.?)\s*(\d{1,2})\s*\+?\s*years?", re.I),
+    re.compile(r"(\d{1,2})\s*\+\s*years?", re.I),
+    re.compile(r"(\d{1,2})\s*(?:-|–|—|to)\s*\d{1,2}\s*\+?\s*years?", re.I),
+    re.compile(r"(\d{1,2})\s*years?\s+(?:of\s+|in\s+|with\s+)?(?:[\w\-]+\s+){0,3}?(?:experience|exp)\b", re.I),
 ]
 
-# ── Bonus / in-demand skills ──────────────────────────────────────────────────
+# ── Seniority keywords — only searched in the JD's title area ─────────────────
+# (searching the whole text made "mentor junior engineers" look like an entry-level role)
+_SENIORITY: list[tuple[re.Pattern, float]] = [
+    (re.compile(r"\b(staff|director|architect|head of)\b", re.I), 10.0),
+    (re.compile(r"\b(lead|principal)\b", re.I), 8.0),
+    (re.compile(r"\b(senior|sr\.?)\b", re.I), 6.0),
+    (re.compile(r"\bmid[\s\-]?level\b", re.I), 4.0),
+    (re.compile(r"\b(intern|internship|entry[\s\-]?level|junior|jr\.?|graduate)\b", re.I), 1.0),
+]
+_TITLE_WINDOW = 300
+
+# ── Education requirement patterns ─────────────────────────────────────────────
+_L, _R = r"(?<![A-Za-z0-9])", r"(?![A-Za-z0-9])"      # \b breaks after a trailing "." (e.g. "M.S.")
+_EDU_REQ: list[tuple[EducationLevel, re.Pattern]] = [
+    (EducationLevel.PHD, re.compile(rf"{_L}(?:ph\.?\s?d|doctorate|doctoral){_R}", re.I)),
+    (EducationLevel.MASTERS, re.compile(rf"{_L}(?:master(?:'s|’s|s)?|m\.?sc|m\.s\.?|mba){_R}", re.I)),
+    (EducationLevel.BACHELORS, re.compile(rf"{_L}(?:bachelor(?:'s|’s|s)?|b\.?sc|b\.s\.?|b\.?tech){_R}", re.I)),
+    (EducationLevel.ASSOCIATE, re.compile(rf"{_L}(?:associate(?:'s|’s)?\s+degree|diploma|hnd){_R}", re.I)),
+]
+_GENERIC_DEGREE = re.compile(r"\bdegree\b", re.I)
+
+# ── Bonus / in-demand skills (must be canonical names from the ontology) ──────
 _BONUS_SKILLS = [
     "Docker", "Kubernetes", "AWS", "Azure", "GCP",
     "MLOps", "MLflow", "LangChain", "Hugging Face",
-    "Generative AI", "LLMs", "GPT / OpenAI",
-    "Terraform", "GitHub Actions", "FastAPI",
+    "Generative AI", "LLMs", "Terraform", "CI/CD", "FastAPI",
 ]
 
 
 class HybridScorer:
-    """
-    Stateless scorer — call ``score()`` with a résumé and job-description
-    context to receive a populated ``ScoreBreakdown``.
-    """
+    """Stateless scorer — call ``score()`` to receive a populated ``ScoreBreakdown``."""
 
     def score(
         self,
@@ -73,29 +72,18 @@ class HybridScorer:
         jd_skills: List[str],
         embedding_score: float,            # pre-computed 0–100
     ) -> ScoreBreakdown:
-        """
-        Compute all scoring components and return a ScoreBreakdown.
-
-        Args:
-            resume:           Parsed résumé object.
-            jd_text:          Raw job description text.
-            jd_skills:        Skills extracted from JD.
-            embedding_score:  Pre-computed cosine similarity × 100.
-
-        Returns:
-            ScoreBreakdown with each component and final weighted score.
-        """
-        kw    = keyword_match_score(resume.skills, jd_skills)
-        exp   = self._score_experience(resume.total_experience_years, jd_text)
-        edu   = self._score_education(resume.highest_education, jd_text)
+        embedding_score = min(max(embedding_score, 0.0), 100.0)
+        kw = keyword_match_score(resume.skills, jd_skills)
+        exp = self._score_experience(resume.total_experience_years, jd_text)
+        edu = self._score_education(resume.highest_education, jd_text)
         bonus = self._score_bonus(resume.skills)
 
         final = (
             embedding_score * settings.WEIGHT_EMBEDDING
-            + kw            * settings.WEIGHT_KEYWORD
-            + exp           * settings.WEIGHT_EXPERIENCE
-            + edu           * settings.WEIGHT_EDUCATION
-            + bonus         * settings.WEIGHT_BONUS
+            + kw * settings.WEIGHT_KEYWORD
+            + exp * settings.WEIGHT_EXPERIENCE
+            + edu * settings.WEIGHT_EDUCATION
+            + bonus * settings.WEIGHT_BONUS
         )
 
         logger.debug(
@@ -109,103 +97,81 @@ class HybridScorer:
             experience_alignment=round(exp, 2),
             education_match=round(edu, 2),
             bonus_skills=round(bonus, 2),
-            final_score=round(min(final, 100.0), 2),
+            final_score=round(min(max(final, 0.0), 100.0), 2),
         )
 
     # ── Experience alignment ───────────────────────────────────────────────────
 
     def _score_experience(self, candidate_years: float, jd_text: str) -> float:
-        """
-        Compare candidate's years of experience against the JD's expected level.
-        Returns 0–100.
-        """
         required_years = self._parse_required_experience(jd_text)
 
         if required_years == 0:
             # JD doesn't specify → base score on reasonable expectations
             if candidate_years >= 5:
                 return 90.0
-            elif candidate_years >= 3:
+            if candidate_years >= 3:
                 return 75.0
-            elif candidate_years >= 1:
+            if candidate_years >= 1:
                 return 60.0
-            else:
-                return 40.0
+            return 40.0
 
         ratio = candidate_years / required_years
         if ratio >= 1.5:
             return 100.0
-        elif ratio >= 1.0:
+        if ratio >= 1.0:
             return 90.0
-        elif ratio >= 0.75:
+        if ratio >= 0.75:
             return 70.0
-        elif ratio >= 0.5:
+        if ratio >= 0.5:
             return 50.0
-        else:
-            return max(10.0, ratio * 100)
+        return max(10.0, ratio * 100)
 
     def _parse_required_experience(self, jd_text: str) -> float:
-        """
-        Extract the minimum required years from a JD.
-        Returns 0.0 if not found.
-        """
-        for pattern, years in _EXP_LEVELS:
-            if pattern.search(jd_text):
+        """Minimum years required by the JD; 0.0 if it cannot be determined."""
+        found = [float(m.group(1)) for p in _YEARS_PATTERNS for m in p.finditer(jd_text)]
+        found = [y for y in found if 0 < y <= 20]
+        if found:
+            return max(found)
+
+        title_area = jd_text[:_TITLE_WINDOW]
+        for pattern, years in _SENIORITY:
+            if pattern.search(title_area):
                 return years
-
-        # Try explicit "X years" anywhere
-        m = re.search(r"(\d+)\s*\+?\s*years?", jd_text, re.I)
-        if m:
-            return float(m.group(1))
-
         return 0.0
 
     # ── Education match ────────────────────────────────────────────────────────
 
     def _score_education(self, candidate_level: EducationLevel, jd_text: str) -> float:
-        """
-        Score 0–100: does the candidate meet or exceed the required degree?
-        """
         required = self._parse_required_education(jd_text)
-        cand_rank = _EDU_RANK.get(candidate_level, 0)
-        req_rank  = _EDU_RANK.get(required, 0)
+        cand_rank = EDUCATION_RANK.get(candidate_level, 0)
+        req_rank = EDUCATION_RANK.get(required, 0)
 
         if req_rank == 0:
             return 75.0                       # JD didn't specify — neutral score
 
         if cand_rank >= req_rank:
-            # Meets or exceeds — full or bonus points
-            excess = cand_rank - req_rank
-            return min(100.0, 80.0 + excess * 10)
-        else:
-            # Doesn't meet requirement
-            gap = req_rank - cand_rank
-            return max(10.0, 70.0 - gap * 20)
+            return min(100.0, 80.0 + (cand_rank - req_rank) * 10)
+        return max(10.0, 70.0 - (req_rank - cand_rank) * 20)
 
     def _parse_required_education(self, jd_text: str) -> EducationLevel:
-        lower = jd_text.lower()
-        if any(k in lower for k in ["phd", "ph.d", "doctorate"]):
-            return EducationLevel.PHD
-        if any(k in lower for k in ["master", "m.s.", "msc", "mba"]):
-            return EducationLevel.MASTERS
-        if any(k in lower for k in ["bachelor", "b.s.", "bsc", "b.tech", "degree"]):
+        """
+        Lowest level the JD mentions. "Bachelor's or Master's" → Bachelor's, and
+        "Bachelor's required, PhD preferred" → Bachelor's (the old code returned
+        the highest level mentioned, penalising candidates who met the real minimum).
+        """
+        mentioned = [lvl for lvl, pat in _EDU_REQ if pat.search(jd_text)]
+        if mentioned:
+            return min(mentioned, key=lambda l: EDUCATION_RANK[l])
+        if _GENERIC_DEGREE.search(jd_text):
             return EducationLevel.BACHELORS
-        if any(k in lower for k in ["associate", "diploma"]):
-            return EducationLevel.ASSOCIATE
         return EducationLevel.NONE
 
     # ── Bonus skills ───────────────────────────────────────────────────────────
 
     def _score_bonus(self, candidate_skills: List[str]) -> float:
-        """
-        Award bonus points for in-demand/premium skills not necessarily
-        listed in the JD. Returns 0–100.
-        """
+        """1 match = 20 points … 5+ matches = 100."""
         candidate_set = set(candidate_skills)
         matches = sum(1 for s in _BONUS_SKILLS if s in candidate_set)
-        if not matches:
-            return 0.0
-        # 1 match = 20, 2 = 40, …, 5+ = 100
         return min(100.0, matches * 20.0)
 
 

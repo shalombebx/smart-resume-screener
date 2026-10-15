@@ -12,23 +12,23 @@ Requirements:
     OPENAI_API_KEY must be set in .env
 
 What this script does:
-    1. Loads sample résumés from data/sample_resumes/
+    1. Loads sample résumés from data/sample_resumes/ (.txt, .pdf, .docx)
     2. Loads the sample job description
     3. Parses and extracts structured data from each résumé
     4. Runs the full hybrid scoring pipeline
-    5. Calls OpenAI for embeddings + GPT-4.1 explanations
+    5. Calls OpenAI for embeddings + GPT explanations
     6. Prints a formatted ranking table
     7. Exports results to exports/demo_results.csv
 """
 
-import os
 import sys
 import csv
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ── Ensure project root is on path ────────────────────────────────────────────
-sys.path.insert(0, str(Path(__file__).parent))
+ROOT = Path(__file__).parent.resolve()
+sys.path.insert(0, str(ROOT))
 
 # Load .env
 from dotenv import load_dotenv
@@ -39,11 +39,14 @@ try:
     from rich.console import Console
     from rich.table   import Table
     from rich.panel   import Panel
-    from rich.text    import Text
+    from rich.markup  import escape
     from rich         import box
     RICH = True
 except ImportError:
     RICH = False
+
+    def escape(x):          # plain-text fallback
+        return x
 
 from app.services.extractor import extractor
 from app.services.parser    import resume_parser
@@ -69,12 +72,12 @@ def main():
         log("   Add your key to .env:  OPENAI_API_KEY=sk-...")
         sys.exit(1)
 
-    log(f"✅ OpenAI API key detected ({settings.OPENAI_API_KEY[:12]}…)")
+    log("✅ OpenAI API key detected")
     log(f"   Embedding model : {settings.OPENAI_EMBEDDING_MODEL}")
     log(f"   Chat model      : {settings.OPENAI_CHAT_MODEL}")
 
     # ── 2. Load résumés ────────────────────────────────────────────────────────
-    resume_dir = Path("data/sample_resumes")
+    resume_dir = ROOT / "data" / "sample_resumes"
     resume_files = list(resume_dir.glob("*.txt")) + list(resume_dir.glob("*.pdf")) + list(resume_dir.glob("*.docx"))
 
     if not resume_files:
@@ -95,8 +98,8 @@ def main():
             resume_analyzer.add_resume(parsed)
 
             log(
-                f"   ✓ [green]{fpath.name}[/green] — "
-                f"{parsed.full_name or 'Unknown'} | "
+                f"   ✓ [green]{escape(fpath.name)}[/green] — "
+                f"{escape(parsed.full_name or 'Unknown')} | "
                 f"{len(parsed.skills)} skills | "
                 f"{parsed.total_experience_years}yr exp | "
                 f"{parsed.highest_education.value}"
@@ -108,7 +111,7 @@ def main():
             log(f"   ✗ Failed to load {fpath.name}: {e}")
 
     # ── 3. Load job description ───────────────────────────────────────────────
-    jd_path = Path("data/job_descriptions/senior_ml_engineer_jd.txt")
+    jd_path = ROOT / "data" / "job_descriptions" / "senior_ml_engineer_jd.txt"
     if not jd_path.exists():
         log(f"❌ Job description not found at {jd_path}")
         sys.exit(1)
@@ -118,7 +121,7 @@ def main():
 
     # ── 4. Run analysis ────────────────────────────────────────────────────────
     log("\n🔍 Running AI screening pipeline…")
-    log("   This will call OpenAI for embeddings and GPT-4 explanations.")
+    log("   This will call OpenAI for embeddings and GPT explanations.")
     log("   (First run may take 30–60 seconds; subsequent runs use cache)\n")
 
     try:
@@ -159,14 +162,14 @@ def main():
 
             table.add_row(
                 f"[{rank_style}]#{c.rank}[/{rank_style}]",
-                c.full_name or c.filename[:20],
+                escape(c.full_name or c.filename[:20]),
                 f"{c.score.final_score:.1f}%",
                 f"{c.score.embedding_similarity:.1f}",
                 f"{c.score.keyword_match:.1f}",
                 f"{c.score.experience_alignment:.1f}",
                 f"{c.score.education_match:.1f}",
                 f"[{color}]{fit}[/{color}]",
-                ", ".join(c.matching_skills[:4]) or "—",
+                escape(", ".join(c.matching_skills[:4])) or "—",
             )
 
         console.print(table)
@@ -181,14 +184,14 @@ def main():
             panel_content = (
                 f"[bold]Score:[/bold] {c.score.final_score:.1f}%  |  "
                 f"[bold]Fit:[/bold] [{fit_color}]{ai.fit_level.value}[/{fit_color}]\n\n"
-                f"{ai.summary}\n\n"
-                f"[bold green]Strengths:[/bold green] {' · '.join(ai.strengths[:3])}\n"
-                f"[bold red]Weaknesses:[/bold red] {' · '.join(ai.weaknesses[:2]) or 'None identified'}\n\n"
-                f"[bold blue]→ {ai.recommendation}[/bold blue]"
+                f"{escape(ai.summary)}\n\n"
+                f"[bold green]Strengths:[/bold green] {escape(' · '.join(ai.strengths[:3]))}\n"
+                f"[bold red]Weaknesses:[/bold red] {escape(' · '.join(ai.weaknesses[:2]) or 'None identified')}\n\n"
+                f"[bold blue]→ {escape(ai.recommendation)}[/bold blue]"
             )
             console.print(Panel(
                 panel_content,
-                title=f"#{c.rank} {c.full_name or c.filename}",
+                title=f"#{c.rank} {escape(c.full_name or c.filename)}",
                 border_style="cyan",
                 padding=(1, 2),
             ))
@@ -201,9 +204,9 @@ def main():
             print(f"#{c.rank:<5} {(c.full_name or c.filename):<25} {c.score.final_score:>6.1f}% {fit:<16}")
 
     # ── 6. Export to CSV ───────────────────────────────────────────────────────
-    export_dir  = Path("exports")
+    export_dir  = ROOT / "exports"
     export_dir.mkdir(exist_ok=True)
-    timestamp   = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp   = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     export_path = export_dir / f"demo_results_{timestamp}.csv"
 
     with export_path.open("w", newline="", encoding="utf-8") as f:

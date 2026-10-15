@@ -56,7 +56,8 @@ class TextExtractor:
     # ── PDF extraction ─────────────────────────────────────────────────────────
 
     def _extract_pdf(self, path: Path) -> str:
-        """Use pdfplumber as primary extractor."""
+        """Use pdfplumber as primary extractor, PyPDF2 as fallback."""
+        text = ""
         try:
             import pdfplumber  # type: ignore
 
@@ -66,16 +67,15 @@ class TextExtractor:
                     page_text = page.extract_text()
                     if page_text:
                         pages.append(page_text)
-
-            if pages:
-                return "\n".join(pages)
-
-            logger.warning("pdfplumber returned empty text for %s — trying PyPDF2 fallback", path.name)
-            return self._extract_pdf_fallback(path)
-
+            text = "\n".join(pages)
         except Exception as exc:
-            logger.warning("pdfplumber failed (%s) — falling back", exc)
-            return self._extract_pdf_fallback(path)
+            logger.warning("pdfplumber failed (%s) — falling back to PyPDF2", exc)
+
+        if text.strip():
+            return text
+
+        logger.warning("No text from pdfplumber for %s — trying PyPDF2 fallback", path.name)
+        return self._extract_pdf_fallback(path)
 
     def _extract_pdf_fallback(self, path: Path) -> str:
         """Fallback: PyPDF2."""
@@ -125,7 +125,7 @@ class TextExtractor:
             return ""
 
         # Fix hyphenated line-breaks (e.g. "develop-\nment" → "development")
-        text = re.sub(r"-\n", "", text)
+        text = re.sub(r"(?<=[a-z])-\n(?=[a-z])", "", text)
 
         # Collapse 3+ consecutive blank lines into 2
         text = re.sub(r"\n{3,}", "\n\n", text)

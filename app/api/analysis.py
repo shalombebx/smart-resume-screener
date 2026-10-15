@@ -20,12 +20,12 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
     summary="Run the AI résumé screening pipeline",
 )
-async def run_analysis(request: AnalyzeRequest):
+def run_analysis(request: AnalyzeRequest):
     """
     Execute the full screening pipeline:
     1. Compute OpenAI embeddings for JD and all résumés
     2. Run hybrid scoring (embedding + keyword + experience + education + bonus)
-    3. Generate GPT-4 explanations per candidate
+    3. Generate GPT explanations per candidate
     4. Return ranked results with full breakdowns
 
     - `job_description`: The full job description text (min 50 chars)
@@ -50,9 +50,7 @@ async def run_analysis(request: AnalyzeRequest):
     except RuntimeError as exc:
         logger.exception("Analysis runtime error")
         raise HTTPException(status_code=500, detail=str(exc))
-    except Exception as exc:
+    except Exception:
         logger.exception("Unexpected error during analysis")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Analysis failed: {str(exc)}",
-        )
+        # Details stay in the server log; don't leak internals to the client.
+        raise HTTPException(status_code=500, detail="Analysis failed. See server logs for details.")

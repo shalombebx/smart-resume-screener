@@ -3,9 +3,10 @@ app/core/logger.py
 ──────────────────
 Configures a clean, structured logger for the entire application.
 """
-
 import logging
 import sys
+
+from app.core.config import settings
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -13,12 +14,12 @@ def get_logger(name: str) -> logging.Logger:
 
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
-        fmt = logging.Formatter(
+        handler.setFormatter(logging.Formatter(
             fmt="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        handler.setFormatter(fmt)
+        ))
         logger.addHandler(handler)
+        logger.propagate = False  # avoid duplicate lines when root/uvicorn also log
 
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG if settings.DEBUG else logging.INFO)
     return logger

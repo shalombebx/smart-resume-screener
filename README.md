@@ -1,10 +1,10 @@
 # 🎯 Smart Résumé Screener
 
-> **AI-powered résumé ranking with OpenAI embeddings, GPT-4.1 reasoning, and a hybrid multi-signal scoring engine. Portfolio-grade.**
+> **AI-powered résumé ranking with OpenAI embeddings, GPT-4o reasoning, and a hybrid multi-signal scoring engine. Portfolio-grade.**
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4.1-412991?logo=openai&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?logo=fastapi&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o-412991?logo=openai&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen)
 
@@ -12,7 +12,7 @@
 
 ## 🔥 Project Overview
 
-Smart Résumé Screener is a **portfolio-grade Applicant Tracking System (ATS)** that uses OpenAI's `text-embedding-3-large` and GPT-4.1 to intelligently rank candidates against a job description with transparent, explainable scoring.
+Smart Résumé Screener is a **portfolio-grade Applicant Tracking System (ATS)** that uses OpenAI's `text-embedding-3-large` and a GPT chat model (`OPENAI_CHAT_MODEL`, default `gpt-4o`) to intelligently rank candidates against a job description with transparent, explainable scoring.
 
 ### Why this project stands out
 
@@ -20,10 +20,10 @@ Smart Résumé Screener is a **portfolio-grade Applicant Tracking System (ATS)**
 |---|---|
 | 🔗 **Semantic Matching** | OpenAI `text-embedding-3-large` vectors + cosine similarity — goes beyond keyword matching |
 | 🧠 **Hybrid Scoring** | 5 weighted signals: embedding, keyword, experience, education, bonus skills |
-| 🤖 **GPT-4.1 Reasoning** | Human-like explanations: strengths, weaknesses, hiring recommendation |
-| 📚 **Skill Ontology** | 200+ alias mappings (`"ML"` → `"Machine Learning"`, `"k8s"` → `"Kubernetes"`) |
+| 🤖 **GPT-4o Reasoning** | Human-like explanations: strengths, weaknesses, hiring recommendation |
+| 📚 **Skill Ontology** | ~190 alias mappings across 59 skills (`"ML"` → `"Machine Learning"`, `"k8s"` → `"Kubernetes"`) |
 | 💾 **Embedding Cache** | SHA-256 keyed disk cache eliminates redundant API calls |
-| 📦 **Batch Processing** | Upload and analyse unlimited résumés simultaneously |
+| 📦 **Batch Processing** | Upload up to `MAX_RESUMES_PER_BATCH` (default 20) résumés per request |
 | 📊 **Export** | Download ranked results as CSV or structured JSON |
 | 🐳 **Docker Ready** | One-command deployment with `docker compose up` |
 
@@ -41,9 +41,9 @@ Smart Résumé Screener is a **portfolio-grade Applicant Tracking System (ATS)**
     ┌─────────▼──────────┐      ┌───────────▼──────────┐      ┌──────────▼──────────┐
     │  📄 Input Layer     │      │  🧹 Preprocessing    │      │  🔑 API Layer        │
     │                    │      │                      │      │                     │
-    │ PDF → pdfplumber   │      │ Text extraction      │      │ POST /upload-resumes│
-    │ DOCX → python-docx │      │ Lowercasing          │      │ POST /analyze       │
-    │ Text → direct      │      │ Skill ontology NLP   │      │ GET  /results       │
+    │ PDF → pdfplumber   │      │ Text extraction      │      │ POST /resumes/upload│
+    │ DOCX → python-docx │      │ Lowercasing          │      │ POST /analysis/run  │
+    │ Text → direct      │      │ Skill ontology NLP   │      │ GET  /results/{id}  │
     │ Drag & drop UI     │      │ Regex entity extract │      │ GET  /export        │
     └────────────────────┘      └──────────────────────┘      └─────────────────────┘
                                             │
@@ -63,7 +63,7 @@ Smart Résumé Screener is a **portfolio-grade Applicant Tracking System (ATS)**
                         └──────────────────┬─────────────────────┘
                                            │
                                ┌───────────▼────────────┐
-                               │  🤖 GPT-4.1 Reasoning  │
+                               │  🤖 GPT-4o Reasoning  │
                                │                        │
                                │  System: Senior        │
                                │  Technical Recruiter   │
@@ -98,7 +98,7 @@ Final Score = (Embedding × 0.50)
 | Signal | Weight | Method |
 |---|---|---|
 | **Embedding Similarity** | 50% | Cosine similarity between JD and résumé OpenAI embeddings |
-| **Keyword Match** | 20% | % of JD skills found in résumé via 200-node skill ontology |
+| **Keyword Match** | 20% | % of JD skills found in résumé via 59-skill ontology |
 | **Experience Alignment** | 15% | Candidate years vs. JD required seniority level |
 | **Education Match** | 10% | Candidate degree vs. JD minimum education requirement |
 | **Bonus Skills** | 5% | Premium in-demand skills (Docker, Kubernetes, LLMs, etc.) |
@@ -131,11 +131,11 @@ smart-resume-screener/
 │   │   ├── parser.py               # NLP-based résumé structuring
 │   │   ├── embedder.py             # OpenAI embeddings + disk cache
 │   │   ├── scorer.py               # Hybrid 5-signal scoring engine
-│   │   ├── reasoner.py             # GPT-4.1 explanation generator
+│   │   ├── reasoner.py             # GPT-4o explanation generator
 │   │   └── analyzer.py             # Pipeline orchestrator
 │   │
 │   └── utils/
-│       └── skill_ontology.py       # 200+ skill alias → canonical mappings
+│       └── skill_ontology.py       # skill alias → canonical mappings (59 skills, ~190 aliases)
 │
 ├── frontend/
 │   └── index.html                  # Premium single-page UI (vanilla JS)
@@ -152,7 +152,8 @@ smart-resume-screener/
 │       └── senior_ml_engineer_jd.txt
 │
 ├── tests/
-│   └── test_screener.py            # 30+ unit + integration tests
+│   ├── test_screener.py            # 47 unit + integration tests
+│   └── test_api.py                 # HTTP smoke tests
 │
 ├── exports/                        # CSV/JSON exports go here
 ├── demo.py                         # Rich terminal demo script
@@ -196,9 +197,6 @@ venv\Scripts\activate
 
 ```bash
 pip install -r requirements.txt
-
-# Optional: download spaCy English model for enhanced NLP
-python -m spacy download en_core_web_sm
 ```
 
 ### 4. Configure environment variables
@@ -213,7 +211,7 @@ Edit `.env` and set your OpenAI API key:
 OPENAI_API_KEY=sk-your-actual-key-here
 ```
 
-> 💡 **Cost note:** Embedding 5 résumés + 1 JD costs ~$0.001 with `text-embedding-3-large`. GPT-4.1 explanations cost ~$0.02–0.05 per run. Caching means repeated runs are free.
+> 💡 **Cost note:** Embedding 5 résumés + 1 JD costs ~$0.001 with `text-embedding-3-large`. GPT-4o explanations cost ~$0.02–0.05 per run. Caching means repeated runs are free.
 
 ### 5. Create required directories
 
@@ -244,9 +242,10 @@ This runs the full pipeline on the 5 sample résumés and prints a rich terminal
 ### Option C: Use the web frontend
 
 1. Start the backend: `python main.py`
-2. Open `frontend/index.html` in your browser
-3. Click **⚙️ API Settings** → set URL to `http://localhost:8000`
-4. Upload résumés, paste the JD, click **Run AI Screening**
+2. Open **http://localhost:8000/** — the backend serves `frontend/index.html` itself
+   (opening the file directly via `file://` is blocked by CORS; if you host the page elsewhere,
+   add its origin to `CORS_ORIGINS` and set the URL under **⚙️ API Settings**)
+3. Upload résumés, paste the JD, click **Run AI Screening**
 
 ### Option D: Docker
 
@@ -328,6 +327,8 @@ GET /api/health
 
 ## 📊 Example Output
 
+> Illustrative only — numbers below are an example of the format, not measured results.
+
 ```
 ╭─────────────────────────────── Candidate Rankings ───────────────────────────────╮
 │ Rank  Name                     Score   Emb%  KW%   Exp%  Edu%  Fit Level        │
@@ -365,15 +366,17 @@ pytest tests/ -v -k "TestResumeParser"
 pytest tests/ -v -k "TestHybridScorer"
 
 # With coverage
-pytest tests/ --cov=app --cov-report=term-missing
+pip install pytest-cov && pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-The test suite includes **30+ tests** covering:
+The test suite includes **55+ tests** covering:
 - Skill ontology: canonicalisation, alias resolution, overlap scoring
 - Resume parser: email/phone/name extraction, education levels, experience years
 - Hybrid scorer: all 5 scoring components
 - Integration: full pipeline with mocked OpenAI calls (no API key required for tests)
 - Schema validation: Pydantic model constraints
+- Regression tests for parser / scorer bugs
+- HTTP smoke tests (health, upload validation, 400/404/422 paths)
 
 ---
 
@@ -388,7 +391,7 @@ The test suite includes **30+ tests** covering:
 | Real-time WebSocket updates | 🔲 Planned | Live progress during analysis |
 | spaCy NER integration | 🔲 Planned | Deeper entity extraction (companies, titles) |
 | Résumé anonymisation | 🔲 Planned | Strip PII for blind screening |
-| Cloud deployment (AWS/GCP) | 🔲 Planned | Terraform IaC included |
+| Cloud deployment (AWS/GCP) | 🔲 Planned | Not included yet |
 | Multi-language support | 🔲 Planned | Non-English résumés |
 
 ---
@@ -405,7 +408,7 @@ Embeddings alone can't reliably extract "5 years of Python experience" or "PhD i
 Real résumés are inconsistent — "ML", "machine learning", "Machine Learning", and "deep learning" all appear in the wild. The ontology normalises these to canonical names before computing overlap, dramatically improving keyword match accuracy.
 
 **Why disk caching for embeddings?**
-The same résumé being re-analysed against a different JD doesn't need a new embedding. SHA-256 keyed JSON caching reduces API costs by ~80% for repeated runs.
+The same résumé being re-analysed against a different JD doesn't need a new embedding. SHA-256 keyed JSON caching (24h TTL by default) avoids paying twice to embed the same text.
 
 ## Bias and Responsible Use
 

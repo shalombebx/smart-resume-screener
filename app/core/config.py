@@ -1,60 +1,69 @@
 """
 app/core/config.py
 ──────────────────
-Central configuration — reads from .env via pydantic-settings.
-All tunable knobs live here; nothing is hard-coded elsewhere.
+Environment-driven settings (Pydantic v2 / pydantic-settings).
 """
-from __future__ import annotations
-
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
-    # ── OpenAI ────────────────────────────────────────────────────────────────
-    openai_api_key: str = Field(..., description="OpenAI API key")
-    embedding_model: str = Field("text-embedding-3-large")
-    chat_model: str = Field("gpt-4o")
+    OPENAI_API_KEY: str = ""
+    OPENAI_EMBEDDING_MODEL: str = Field(
+        "text-embedding-3-large",
+        validation_alias=AliasChoices("OPENAI_EMBEDDING_MODEL", "EMBEDDING_MODEL"),
+    )
+    OPENAI_CHAT_MODEL: str = Field(
+        "gpt-4o",
+        validation_alias=AliasChoices("OPENAI_CHAT_MODEL", "CHAT_MODEL"),
+    )
+    OPENAI_MAX_TOKENS: int = 800
+    OPENAI_TEMPERATURE: float = 0.2
 
-    # ── Server ────────────────────────────────────────────────────────────────
-    host: str = Field("0.0.0.0")
-    port: int = Field(8000)
-    debug: bool = Field(False)
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    DEBUG: bool = False
+    CORS_ORIGINS: list[str] = ["http://localhost:8000", "http://localhost:5173"]  # JSON list in .env
 
-    # ── Cache ─────────────────────────────────────────────────────────────────
-    cache_dir: Path = Field(Path(".cache/embeddings"))
-    cache_ttl_seconds: int = Field(86400)
+    CACHE_DIR: Path = Path(".cache/embeddings")
+    CACHE_TTL_SECONDS: int = 86400
+    ENABLE_EMBEDDING_CACHE: bool = True
 
-    # ── Upload ────────────────────────────────────────────────────────────────
-    max_file_size_mb: int = Field(10)
-    max_resumes_per_batch: int = Field(20)
+    # Previously missing — referenced by app/api/resumes.py and app/api/results.py
+    UPLOAD_DIR: Path = Path("data/uploads")
+    EXPORT_DIR: Path = Path("exports")
+    ALLOWED_EXTENSIONS: list[str] = [".pdf", ".docx"]
 
-    # ── Scoring weights ───────────────────────────────────────────────────────
-    weight_embedding: float = Field(0.50)
-    weight_keyword: float = Field(0.20)
-    weight_experience: float = Field(0.15)
-    weight_education: float = Field(0.10)
-    weight_bonus: float = Field(0.05)
+    MAX_FILE_SIZE_MB: int = 10
+    MAX_RESUMES_PER_BATCH: int = 20
 
-    @field_validator("cache_dir", mode="before")
-    @classmethod
-    def ensure_cache_dir(cls, v: str | Path) -> Path:
-        p = Path(v)
-        p.mkdir(parents=True, exist_ok=True)
-        return p
+    WEIGHT_EMBEDDING: float = 0.50
+    WEIGHT_KEYWORD: float = 0.20
+    WEIGHT_EXPERIENCE: float = 0.15
+    WEIGHT_EDUCATION: float = 0.10
+    WEIGHT_BONUS: float = 0.05
+
+    @model_validator(mode="after")
+    def _weights_sum_to_one(self):
+        total = (
+            self.WEIGHT_EMBEDDING + self.WEIGHT_KEYWORD + self.WEIGHT_EXPERIENCE
+            + self.WEIGHT_EDUCATION + self.WEIGHT_BONUS
+        )
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(f"Scoring weights must sum to 1.0 (got {total})")
+        return self
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Cached singleton — import this everywhere."""
     return Settings()
+
+
+settings = get_settings()

@@ -42,3 +42,9 @@ htmlcov/
 node_modules/
 frontend/dist/
 frontend/.env
+
+# Embedding cache (CACHE_DIR defaults to .cache/embeddings)
+.cache/
+
+# keep the template
+!.env.example
