@@ -12,20 +12,19 @@ DELETE /api/resumes/           — Clear all résumés
 from __future__ import annotations
 import uuid
 from pathlib import Path
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
-
-settings = get_settings()
 from app.core.logger import get_logger
 from app.models.schemas import UploadResponse
 from app.services.extractor import extractor
 from app.services.parser import resume_parser
 from app.services.analyzer import resume_analyzer
 
+settings = get_settings()
 logger = get_logger(__name__)
 router = APIRouter()
 
@@ -43,7 +42,9 @@ def _error(filename: str | None, message: str) -> UploadResponse:
     status_code=status.HTTP_201_CREATED,
     summary="Upload one or more résumé files (PDF / DOCX)",
 )
-async def upload_resumes(files: List[UploadFile] = File(...)):
+async def upload_resumes(
+    files: Annotated[list[UploadFile], File(description="One or more PDF or DOCX résumé files")]
+):
     """
     Accept PDF or DOCX résumé files, extract text, parse structured data,
     and store them in the in-memory résumé store.
