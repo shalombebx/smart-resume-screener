@@ -1,11 +1,11 @@
 """
 app/services/reasoner.py
 ─────────────────────────
-Uses the OpenAI Chat API (model set by OPENAI_CHAT_MODEL, default gpt-4o) to generate human-readable candidate
-evaluation summaries, strengths/weaknesses, and hiring recommendations.
+Uses a local Ollama instance (default model: llama3) to generate human-readable
+candidate evaluation summaries, strengths/weaknesses, and hiring recommendations.
 
 Prompt engineering:
-- System prompt primes GPT as a senior technical recruiter
+- System prompt primes the model as a senior technical recruiter
 - User prompt injects structured résumé + JD data (résumé text is treated as untrusted data)
 - Response is parsed into AIExplanation schema
 """
@@ -49,7 +49,7 @@ JSON schema to follow EXACTLY:
 
 class AIReasoner:
     """
-    Generates GPT-powered hiring evaluations for each candidate.
+    Generates Ollama-powered hiring evaluations for each candidate.
     """
 
     def __init__(self) -> None:
@@ -58,9 +58,11 @@ class AIReasoner:
     @property
     def client(self) -> OpenAI:
         if self._client is None:
-            if not settings.OPENAI_API_KEY:
-                raise RuntimeError("OPENAI_API_KEY is not configured.")
-            self._client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            # Local Ollama via its OpenAI-compatible API (URL comes from config / .env)
+            self._client = OpenAI(
+                base_url=settings.OLLAMA_BASE_URL,
+                api_key="ollama",          # required by the SDK, ignored by Ollama
+            )
         return self._client
 
     def explain(
@@ -74,11 +76,11 @@ class AIReasoner:
         missing_skills:  List[str],
     ) -> AIExplanation:
         """
-        Call GPT and return a structured AIExplanation.
-        Falls back to a template-based explanation if the API call fails.
+        Call the local model and return a structured AIExplanation.
+        Falls back to a template-based explanation if the call fails.
         """
         try:
-            return self._call_gpt(
+            return self._call_llm(
                 candidate_name=candidate_name,
                 resume_text=resume_text,
                 jd_text=jd_text,
@@ -87,12 +89,12 @@ class AIReasoner:
                 missing_skills=missing_skills,
             )
         except Exception as exc:
-            logger.warning("GPT reasoning failed for %s: %s — using fallback", candidate_name, exc)
+            logger.warning("Local AI reasoning failed for %s: %s — using fallback", candidate_name, exc)
             return self._fallback_explanation(score, matching_skills, missing_skills)
 
-    # ── GPT call ───────────────────────────────────────────────────────────────
+    # ── LLM call ───────────────────────────────────────────────────────────────
 
-    def _call_gpt(
+    def _call_llm(
         self,
         *,
         candidate_name:  str,
@@ -135,14 +137,15 @@ Return ONLY the JSON object specified.
 """
 
         response = self.client.chat.completions.create(
-            model=settings.OPENAI_CHAT_MODEL,
+            model=settings.OLLAMA_CHAT_MODEL,
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
                 {"role": "user",   "content": user_prompt},
             ],
-            max_tokens=settings.OPENAI_MAX_TOKENS,
-            temperature=settings.OPENAI_TEMPERATURE,
+            # Ollama's OpenAI-compatible layer supports JSON mode
             response_format={"type": "json_object"},
+            temperature=settings.OPENAI_TEMPERATURE,
+            max_tokens=settings.OPENAI_MAX_TOKENS,
         )
 
         raw = response.choices[0].message.content or "{}"
@@ -159,12 +162,15 @@ Return ONLY the JSON object specified.
         return []
 
     def _parse_response(self, raw: str, score: ScoreBreakdown) -> AIExplanation:
-        """Parse GPT JSON response into AIExplanation (tolerates malformed output)."""
+        """Parse JSON response into AIExplanation (tolerates malformed output)."""
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
             m = re.search(r"\{.*\}", raw, re.DOTALL)
-            data = json.loads(m.group(0)) if m else {}
+            try:
+                data = json.loads(m.group(0)) if m else {}
+            except json.JSONDecodeError:
+                data = {}
         if not isinstance(data, dict):
             data = {}
 
@@ -185,7 +191,7 @@ Return ONLY the JSON object specified.
             return FitLevel.MODERATE
         if "weak" in lower or "poor" in lower:
             return FitLevel.WEAK
-        # Derive from score if GPT didn't classify properly
+        # Derive from score if the model didn't classify properly
         if score >= 70:
             return FitLevel.STRONG
         elif score >= 45:
@@ -202,7 +208,7 @@ Return ONLY the JSON object specified.
         missing_skills: List[str],
     ) -> AIExplanation:
         """
-        Template-based explanation when GPT is unavailable.
+        Template-based explanation when Ollama is unavailable.
         """
         fit = self._parse_fit_level("", score.final_score)
 

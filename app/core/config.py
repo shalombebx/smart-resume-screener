@@ -15,6 +15,7 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
+    # ── OpenAI (kept for compatibility; not used when running on Ollama) ──────
     OPENAI_API_KEY: str = ""
     OPENAI_EMBEDDING_MODEL: str = Field(
         "text-embedding-3-large",
@@ -27,6 +28,14 @@ class Settings(BaseSettings):
     OPENAI_MAX_TOKENS: int = 800
     OPENAI_TEMPERATURE: float = 0.2
 
+    # ── Ollama (local models, OpenAI-compatible API) ──────────────────────────
+    # 127.0.0.1 rather than "localhost": Ollama listens on IPv4 only, and
+    # "localhost" can try IPv6 (::1) first. In Docker, set this to
+    # http://host.docker.internal:11434/v1 via the compose `environment:` block.
+    OLLAMA_BASE_URL: str = "http://127.0.0.1:11434/v1"
+    OLLAMA_CHAT_MODEL: str = "llama3"
+    OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = False
@@ -36,7 +45,6 @@ class Settings(BaseSettings):
     CACHE_TTL_SECONDS: int = 86400
     ENABLE_EMBEDDING_CACHE: bool = True
 
-    # Previously missing — referenced by app/api/resumes.py and app/api/results.py
     UPLOAD_DIR: Path = Path("data/uploads")
     EXPORT_DIR: Path = Path("exports")
     ALLOWED_EXTENSIONS: list[str] = [".pdf", ".docx"]

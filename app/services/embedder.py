@@ -1,10 +1,10 @@
 """
 app/services/embedder.py
 ─────────────────────────
-Generates and caches OpenAI text embeddings.
+Generates and caches local text embeddings via Ollama (default: nomic-embed-text).
 
 Features:
-- Uses text-embedding-3-large (configurable)
+- Uses the embedding model named in OLLAMA_EMBEDDING_MODEL via the local Ollama API
 - Disk-based SHA-256 keyed cache (JSON) with TTL (CACHE_TTL_SECONDS)
 - Cosine similarity utility
 """
@@ -24,7 +24,10 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
-_MAX_CHARS = 32000   # ≈ 8k tokens, safely under the model's 8191-token input limit
+# Character limit before sending text to the embedding model. Kept conservative
+# because local embedding models have smaller context windows than OpenAI's;
+# raise it if your Ollama setup handles longer inputs without errors.
+_MAX_CHARS = 8000
 
 
 def _cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -40,23 +43,22 @@ def _cosine_similarity(a: List[float], b: List[float]) -> float:
 
 
 class EmbeddingService:
-    """Thin wrapper around the OpenAI Embeddings API with transparent disk caching."""
+    """Thin wrapper using the OpenAI SDK to talk to Ollama's embeddings endpoint."""
 
     def __init__(self) -> None:
         self._client: Optional[OpenAI] = None
         self._cache_dir = Path(settings.CACHE_DIR)
         self._cache_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── OpenAI client (lazy init so tests can run without key) ────────────────
+    # ── Local Ollama client (lazy init, no OpenAI key required) ───────────────
 
     @property
     def client(self) -> OpenAI:
         if self._client is None:
-            if not settings.OPENAI_API_KEY:
-                raise RuntimeError(
-                    "OPENAI_API_KEY is not set. Add it to your .env file before running analysis."
-                )
-            self._client = OpenAI(api_key=settings.OPENAI_API_KEY)
+            self._client = OpenAI(
+                base_url=settings.OLLAMA_BASE_URL,
+                api_key="ollama",          # required by the SDK, ignored by Ollama
+            )
         return self._client
 
     # ── Cache helpers ──────────────────────────────────────────────────────────
@@ -92,8 +94,8 @@ class EmbeddingService:
     # ── Core embedding ─────────────────────────────────────────────────────────
 
     def embed(self, text: str) -> List[float]:
-        """Return the embedding vector for one text (cache first, then OpenAI)."""
-        model = settings.OPENAI_EMBEDDING_MODEL
+        """Return the embedding vector for one text (cache first, then Ollama)."""
+        model = settings.OLLAMA_EMBEDDING_MODEL
         truncated = text[:_MAX_CHARS]
         key = self._cache_key(truncated, model)
 
@@ -102,7 +104,7 @@ class EmbeddingService:
             logger.debug("Embedding cache HIT (key=%s…)", key[:12])
             return cached
 
-        logger.debug("Embedding cache MISS — calling OpenAI API")
+        logger.debug("Embedding cache MISS — calling local Ollama embeddings API")
         response = self.client.embeddings.create(input=truncated, model=model)
         vector = response.data[0].embedding
 
@@ -123,7 +125,7 @@ class EmbeddingService:
     def similarity(self, text_a: str, text_b: str) -> float:
         """Cosine similarity of two texts as a 0–100 score."""
         if not text_a.strip() or not text_b.strip():
-            return 0.0                                  # the API rejects empty input
+            return 0.0
         return self._to_percent(_cosine_similarity(self.embed(text_a), self.embed(text_b)))
 
     def similarity_to_vector(self, vector: List[float], text: str) -> float:

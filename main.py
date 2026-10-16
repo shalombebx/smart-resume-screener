@@ -14,9 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.api import resumes, analysis, results, health
-from app.core.config import settings
+from app.core.config import get_settings
 from app.core.logger import get_logger
 
+settings = get_settings()
 logger = get_logger(__name__)
 
 _FRONTEND = Path(__file__).parent / "frontend" / "index.html"
@@ -37,6 +38,31 @@ app = FastAPI(
     redoc_url="/api/redoc",
     lifespan=lifespan,
 )
+_orig_openapi = app.openapi
+
+def _openapi_with_binary_files():
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = _orig_openapi()
+
+    def fix(node):
+        if isinstance(node, dict):
+            if node.get("contentMediaType") == "application/octet-stream":
+                node.pop("contentMediaType")
+                node["format"] = "binary"
+            for v in node.values():
+                fix(v)
+        elif isinstance(node, list):
+            for v in node:
+                fix(v)
+
+    fix(schema)
+    app.openapi_schema = schema
+    return schema
+
+app.openapi = _openapi_with_binary_files
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,9 +79,6 @@ app.include_router(results.router, prefix="/api/results", tags=["Results"])
 
 
 # ── Frontend ───────────────────────────────────────────────────────────────────
-# (The old code tried to serve a non-existent React build from frontend/dist, and
-#  its catch-all route was mis-indented — a SyntaxError — and used HTTPException
-#  without importing it.)
 @app.get("/", include_in_schema=False)
 async def serve_frontend():
     if _FRONTEND.is_file():
