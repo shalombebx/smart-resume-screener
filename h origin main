@@ -1,0 +1,5 @@
+[33m3e0250c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Update docker-compose service configuration
+[33mabece07[m Use Annotated File() for upload endpoint and add field description
+[33m0cf6388[m Switch to local Ollama, fix Swagger file upload schema, harden frontend lookup
+[33mf928f38[m fix: resolve settings import error causing Docker crash
+[33m18044dd[m Fix schemas, parser, scorer, API and frontend bugs

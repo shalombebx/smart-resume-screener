@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # "localhost" can try IPv6 (::1) first. In Docker, set this to
     # http://host.docker.internal:11434/v1 via the compose `environment:` block.
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434/v1"
-    OLLAMA_CHAT_MODEL: str = "llama3"
+    OLLAMA_CHAT_MODEL: str = "llama3.2:1b"
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
 
     HOST: str = "0.0.0.0"
