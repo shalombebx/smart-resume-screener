@@ -180,7 +180,7 @@ Return ONLY the JSON object specified.
             weaknesses=self._as_str_list(data.get("weaknesses")),
             missing_requirements=self._as_str_list(data.get("missing_requirements")),
             recommendation=str(data.get("recommendation") or ""),
-            fit_level=self._parse_fit_level(str(data.get("fit_level") or ""), score.final_score),
+                        fit_level=self._parse_fit_level("", score.final_score),
         )
 
     def _parse_fit_level(self, fit_str: str, score: float) -> FitLevel:
