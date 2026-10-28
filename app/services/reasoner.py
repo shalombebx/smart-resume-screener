@@ -74,11 +74,15 @@ class AIReasoner:
         score:          ScoreBreakdown,
         matching_skills: List[str],
         missing_skills:  List[str],
+        use_llm: bool = True,
     ) -> AIExplanation:
         """
         Call the local model and return a structured AIExplanation.
         Falls back to a template-based explanation if the call fails.
         """
+        if not use_llm:
+            return self._fallback_explanation(score, matching_skills, missing_skills)
+
         try:
             return self._call_llm(
                 candidate_name=candidate_name,

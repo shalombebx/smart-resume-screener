@@ -26,6 +26,7 @@ from app.services.scorer import hybrid_scorer
 from app.services.reasoner import ai_reasoner
 from app.utils.skill_ontology import extract_skills_from_text, skills_overlap
 from app.core.logger import get_logger
+from app.core.config import settings
 
 logger = get_logger(__name__)
 
@@ -94,6 +95,7 @@ class ResumeAnalyzer:
 
         jd_skills = extract_skills_from_text(job_description)
         logger.info("JD skills detected: %s", jd_skills[:15])
+        logger.info("AI-generated explanations enabled: %s", settings.ENABLE_AI_EXPLANATIONS)
 
         logger.info("Computing JD embedding…")
         jd_vector = embedding_service.embed(job_description)      # once, not once per résumé
@@ -120,6 +122,7 @@ class ResumeAnalyzer:
                 score=score_breakdown,
                 matching_skills=matching_skills,
                 missing_skills=missing_skills,
+                use_llm=settings.ENABLE_AI_EXPLANATIONS,
             )
 
             results.append(CandidateResult(

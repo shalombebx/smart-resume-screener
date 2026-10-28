@@ -23,9 +23,9 @@ router = APIRouter()
 def run_analysis(request: AnalyzeRequest):
     """
     Execute the full screening pipeline:
-    1. Compute OpenAI embeddings for JD and all résumés
+    1. Compute local Ollama embeddings for the JD and all résumés
     2. Run hybrid scoring (embedding + keyword + experience + education + bonus)
-    3. Generate GPT explanations per candidate
+    3. Optionally generate local AI explanations per candidate
     4. Return ranked results with full breakdowns
 
     - `job_description`: The full job description text (min 50 chars)

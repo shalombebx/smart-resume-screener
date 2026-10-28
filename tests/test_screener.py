@@ -354,6 +354,34 @@ class TestPipelineIntegration:
         # Session ID is set
         assert len(session.session_id) > 0
 
+    def test_reasoner_can_skip_llm(self):
+        from unittest.mock import patch
+        from app.services.reasoner import AIReasoner
+
+        reasoner = AIReasoner()
+        score = ScoreBreakdown(
+            embedding_similarity=80.0,
+            keyword_match=60.0,
+            experience_alignment=75.0,
+            education_match=75.0,
+            bonus_skills=20.0,
+            final_score=70.0,
+        )
+
+        with patch.object(reasoner, "_call_llm", side_effect=AssertionError("LLM should not run")):
+            explanation = reasoner.explain(
+                candidate_name="Test Candidate",
+                resume_text="Python developer",
+                jd_text="Python developer needed",
+                score=score,
+                matching_skills=["Python"],
+                missing_skills=["Docker"],
+                use_llm=False,
+            )
+
+        assert explanation.fit_level == FitLevel.STRONG
+        assert "Python" in explanation.strengths[0]
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4b. Regression tests for bugs fixed during the debugging pass
