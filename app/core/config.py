@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434/v1"
     OLLAMA_CHAT_MODEL: str = "llama3.2:1b"
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
+    ENABLE_AI_EXPLANATIONS: bool = False
 
     HOST: str = "0.0.0.0"
     PORT: int = 8000

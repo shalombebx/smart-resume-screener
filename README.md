@@ -163,6 +163,12 @@ OLLAMA_CHAT_MODEL="llama3.2:1b"
 
 ```
 
+Generated explanations are disabled by default for faster screening. Candidate
+ranking and scores still use the embedding and hybrid scoring pipeline, but
+the app skips the per-candidate chat-model calls and returns concise
+template-based explanations instead. Set `ENABLE_AI_EXPLANATIONS=true` in
+`.env` to restore model-generated explanations.
+
 ### 6. Create required directories
 
 ```bash
